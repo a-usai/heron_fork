@@ -6,7 +6,7 @@ import sys
 
 scores = {}
 verdicts = []
-#prova
+
 KEYWORDS = ["urgent", "verify", "suspended", "password", "expires", "act now",
             "congratulations", "winner", "claim", "immediately", "gift card"]
 
