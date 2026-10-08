@@ -10,7 +10,7 @@ verdicts = []
 KEYWORDS = ["urgent", "verify", "suspended", "password", "expires", "act now",
             "congratulations", "winner", "claim", "immediately", "gift card"]
 
-def check_mail(folder="/home/lgarcia/mail_export/", flagged=[]):
+def check_mail(folder="/Users/alessiousai/Desktop/libri/MAGISTRALE/1-PR/INDUSTRIAL-SOFTWARE-DEVELOPMENT/heron_fork/data/samples", flagged=[]):
     files = os.listdir(folder)
     for fn in files:
         if not fn.endswith(".eml"):
