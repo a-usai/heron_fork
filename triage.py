@@ -4,6 +4,8 @@ import re
 import os
 import sys
 
+W_PUNYCODE_LINK = 3
+
 W_REPLY_TO_MISMATCH = 2
 
 W_AUTH_FAIL = 2
@@ -53,7 +55,7 @@ def check_mail(folder, flagged=None):
             if re.match("https?://[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+", u):
                 s = s + W_IP_LINK  # ip address url, very bad
             if "xn--" in u:
-                s = s + 3
+                s = s + W_PUNYCODE_LINK
         # sender says paypal/microsoft/amazon but domain is weird
         if "paypal" in frm.lower() and "paypal.com" not in frm.lower():
             s = s + W_BRAND_MISMATCH
