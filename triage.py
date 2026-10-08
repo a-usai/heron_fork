@@ -71,7 +71,7 @@ def check_mail(folder="/Users/alessiousai/Desktop/libri/MAGISTRALE/1-PR/INDUSTRI
     print("flagged:", flagged)
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        check_mail(sys.argv[1])
-    else:
-        check_mail()
+    if len(sys.argv) != 2:
+        print("You must pass a folder path as an argument")
+        sys.exit(2)
+    check_mail(sys.argv[1])
