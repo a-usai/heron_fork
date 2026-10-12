@@ -4,8 +4,6 @@ import re
 import os
 import sys
 
-W_PUNYCODE_LINK = 3
-
 W_REPLY_TO_MISMATCH = 2
 
 W_AUTH_FAIL = 2
@@ -14,29 +12,30 @@ W_BRAND_MISMATCH = 3
 
 PHISHING_THRESHOLD = 5
 
-SUSPCIOUS_THRESHOLD = 3
+SUSPICIOUS_THRESHOLD = 3
+
+W_PUNYCODE_LINK = 3
 
 W_IP_LINK = 3
 
 W_KEYWORD = 1
 
 
-
 KEYWORDS = ["urgent", "verify", "suspended", "password", "expires", "act now",
             "congratulations", "winner", "claim", "immediately", "gift card"]
 
 def check_mail(folder, flagged=None):
+    scores = {}
+    verdicts = []
 
     if flagged is None:
         flagged = []
-    scores = {}
-    verdicts = []
 
     files = os.listdir(folder)
     for fn in files:
         if not fn.endswith(".eml"):
             continue
-        raw = open(os.path.join(folder,fn), encoding="utf-8", errors="ignore").read()
+        raw = open(os.path.join(folder, fn), encoding="utf-8", errors="ignore").read()
         s = 0
         try:
             frm = re.search("From: (.*)", raw).group(1)
@@ -55,7 +54,7 @@ def check_mail(folder, flagged=None):
         for u in urls:
             if re.match("https?://[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+", u):
                 s = s + W_IP_LINK  # ip address url, very bad
-            if "xn--" in u:
+            if "xn--" in u:  # punycode
                 s = s + W_PUNYCODE_LINK
         # sender says paypal/microsoft/amazon but domain is weird
         if "paypal" in frm.lower() and "paypal.com" not in frm.lower():
@@ -79,7 +78,7 @@ def check_mail(folder, flagged=None):
         if s >= PHISHING_THRESHOLD:
             verdicts.append((fn, "PHISHING", s))
             flagged.append(fn)
-        elif s >= SUSPCIOUS_THRESHOLD:
+        elif s >= SUSPICIOUS_THRESHOLD:
             verdicts.append((fn, "suspicious", s))
         else:
             verdicts.append((fn, "ok", s))
@@ -93,6 +92,6 @@ def check_mail(folder, flagged=None):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("You must pass a folder path as an argument")
+        print("you must pass a folder path as argument", file=sys.stderr)
         sys.exit(2)
     check_mail(sys.argv[1])
