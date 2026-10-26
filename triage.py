@@ -1,5 +1,3 @@
-# quick phishing checker for the mail export - L. Garcia, march 2025
-# TODO: make this nicer at some point
 import re
 import os
 import sys
@@ -20,33 +18,60 @@ W_IP_LINK = 3
 
 W_KEYWORD = 1
 
+BRANDS = ["paypal", "microsoft", "amazon"]
 
 KEYWORDS = ["urgent", "verify", "suspended", "password", "expires", "act now",
             "congratulations", "winner", "claim", "immediately", "gift card"]
 
-def check_mail(folder, flagged=None):
+
+def header(raw, name):
+    """Returns the value of the first occurence of the `name:` pattern in the
+    email header, or `?` if missing."""
+    match = re.search(name + ": (.*)", raw)
+    if match is None:
+        return "?"
+    return match.group(1)
+
+
+def sender_domain(address):
+    """Return the email address domain or None if `@` is missing."""
+    match = re.search("@([a-zA-Z0-9.-]+)", address)
+    if match is None:
+        return None
+    return match.group(1)
+
+
+def compute_verdict(score):
+    """Map a score to a verdict."""
+    if score >= PHISHING_THRESHOLD:
+        return "PHISHING"
+    elif score >= SUSPICIOUS_THRESHOLD:
+        return "suspicious"
+    else:
+        return "ok"
+
+
+def check_mail(folder):
+    """Score every email file in the given folder.
+    Return (file name, verdict, score) tuples.
+    """
+
     scores = {}
     verdicts = []
-
-    if flagged is None:
-        flagged = []
 
     files = os.listdir(folder)
     for fn in files:
         if not fn.endswith(".eml"):
             continue
+
         with open(os.path.join(folder, fn), encoding="utf-8", errors="ignore") as f:
             raw = f.read()
+
         s = 0
-        try:
-            frm = re.search("From: (.*)", raw).group(1)
-        except:
-            frm = "?"
-        try:
-            subj = re.search("Subject: (.*)", raw).group(1)
-        except:
-            subj = "?"
+
+        frm = header(raw, "From")
         low = raw.lower()
+
         for kw in KEYWORDS:
             if kw in low:
                 s = s + W_KEYWORD
@@ -57,42 +82,43 @@ def check_mail(folder, flagged=None):
                 s = s + W_IP_LINK  # ip address url, very bad
             if "xn--" in u:  # punycode
                 s = s + W_PUNYCODE_LINK
+
         # sender says paypal/microsoft/amazon but domain is weird
-        if "paypal" in frm.lower() and "paypal.com" not in frm.lower():
-            s = s + W_BRAND_MISMATCH
-        if "microsoft" in frm.lower() and "microsoft.com" not in frm.lower():
-            s = s + W_BRAND_MISMATCH
-        if "amazon" in frm.lower() and "amazon.com" not in frm.lower():
-            s = s + W_BRAND_MISMATCH
+        for brand in BRANDS:
+            if brand in frm.lower() and f"{brand}.com" not in frm.lower():
+                s = s + W_BRAND_MISMATCH
+
         if "spf=fail" in low or "dmarc=fail" in low:
             s = s + W_AUTH_FAIL
+
         # reply-to different from from
-        try:
-            rt = re.search("Reply-To: (.*)", raw).group(1)
-            m1 = re.search("@([a-zA-Z0-9.-]+)", frm).group(1)
-            m2 = re.search("@([a-zA-Z0-9.-]+)", rt).group(1)
-            if m1 != m2:
-                s = s + W_REPLY_TO_MISMATCH
-        except:
-            pass
+        from_domain = sender_domain(frm)
+        reply_domain = sender_domain(header(raw, "Reply-To"))
+        if from_domain and reply_domain and from_domain != reply_domain:
+            s = s + W_REPLY_TO_MISMATCH
+
         scores[fn] = s
-        if s >= PHISHING_THRESHOLD:
-            verdicts.append((fn, "PHISHING", s))
-            flagged.append(fn)
-        elif s >= SUSPICIOUS_THRESHOLD:
-            verdicts.append((fn, "suspicious", s))
-        else:
-            verdicts.append((fn, "ok", s))
-    print("checked", len(scores), "mails")
+        verdicts.append((fn, compute_verdict(s), s))
+
+        return verdicts
+
+
+def report(verdicts):
+    """Prints the verdicts and save them to the results file."""
+    print("checked", len(verdicts), "mails")
     for v in verdicts:
         print(" ", v[0], "->", v[1], "(score", str(v[2]) + ")")
-
     with open("results.txt", "w") as out:
         out.write(str(verdicts))
-    print("flagged:", flagged)
+    print("flagged:", [v[0] for v in verdicts if v[1] == "PHISHING"])
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("you must pass a folder path as argument", file=sys.stderr)
         sys.exit(2)
-    check_mail(sys.argv[1])
+    try:
+        verdicts = check_mail(sys.argv[1])
+        report(verdicts)
+    except FileNotFoundError:
+        print("error: no such folder", file=sys.stderr)
