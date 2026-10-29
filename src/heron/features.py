@@ -15,6 +15,8 @@ BRANDS = ["paypal", "microsoft", "amazon"]
 KEYWORDS = ["urgent", "verify", "suspended", "password", "expires", "act now",
             "congratulations", "winner", "claim", "immediately", "gift card"]
 
+_URL_RE=re.compile("https?://[^\s\"'<>]+")
+_IP_URK_RE=re.compile("https?://[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+")
 
 def keyword_score(raw):
     """Assign one point for each keyword found in the email."""
