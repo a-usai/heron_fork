@@ -1,24 +1,29 @@
 from dataclasses import dataclass
+from enum import StrEnum
 
-@dataclass
+
+@dataclass(frozen=True)
 class ParsedEmail:
-    """A dataclass to hold the parsed email data."""
+    """Dataclass that holds the parsed email attributes."""
     email_id: str
     sender: str
-    from_domain:str | None
-    reply_to_domain:str | None=None
+    from_domain: str | None
+    reply_to_domain: str | None
     auth_results: str
     text: str
     links: tuple[str]
 
-email=ParsedEmail(
-    email_id="1",
-    sender="aaa@a.it",
-    from_domain="a.it",
-    reply_to_domain="b.it",
-    auth_result="spf=pass",
-    text="This is a test email.",
-    links=("http://example.com", "https://xn--example.com")
-)
 
-email.email_id="2"
+@dataclass(frozen=True)
+class TriageResult:
+    """The outcome of one email message, composed of id, score and verdict."""
+    email_id: str
+    score: int
+    verdict: "Verdict"
+
+
+class Verdict(StrEnum):
+    """Outcome verdict of the triage."""
+    BENIGN = "benign"
+    SUSPICIOUS = "suspicious"
+    PHISHING = "phishing"

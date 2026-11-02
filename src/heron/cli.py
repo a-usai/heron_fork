@@ -2,26 +2,29 @@
 
 import argparse
 import os
+import json
 import sys
+from dataclasses import asdict
 
 from heron.scorer import triage
 from heron.parser import parse_eml
 from heron.models import TriageResult
 
+
 def build_parser() -> argparse.ArgumentParser:
-    """return the parser of the CLI arguments"""
+    """Return the parser of the CLI arguments."""
     parser = argparse.ArgumentParser(
         prog="heron",
-        description="Triage of phising emails."
+        description="Triage of phishing emails."
     )
     parser.add_argument(
         "folder",
-        help="Path to the folder containing email files"
+        help="a folder containing `.eml` files"
     )
     parser.add_argument(
         "--json",
         action="store_true",
-        help="machine-readable output in JSON format"
+        help="machine-readable output"
     )
     return parser
 
@@ -52,14 +55,12 @@ def report(verdicts: list[TriageResult]) -> None:
 def main(argv: list[str] | None = None):
     """Run the triage on the given folder"""
     parser = build_parser()
-    args= parser.parse_args(argv)
+    args = parser.parse_args(argv)
     try:
         verdicts = check_mail(args.folder)
-
         if args.json:
             with open("output.json", "w") as f:
-                json.dump([asdict(v) for v in verdicts],f)
+                json.dump([asdict(v) for v in verdicts], f)
         report(verdicts)
-
     except FileNotFoundError:
         print("error: no such folder", file=sys.stderr)
