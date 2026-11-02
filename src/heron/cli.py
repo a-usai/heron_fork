@@ -1,16 +1,35 @@
 """Command-line interface: `python -m heron <folder>`"""
 
+import argparse
 import os
 import sys
 
-from heron.scorer import score_email, compute_verdict
+from heron.scorer import triage
+from heron.parser import parse_eml
+from heron.models import TriageResult
+
+def build_parser() -> argparse.ArgumentParser:
+    """return the parser of the CLI arguments"""
+    parser = argparse.ArgumentParser(
+        prog="heron",
+        description="Triage of phising emails."
+    )
+    parser.add_argument(
+        "folder",
+        help="Path to the folder containing email files"
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="machine-readable output in JSON format"
+    )
+    return parser
 
 
-def check_mail(folder):
+def check_mail(folder: str) -> list[TriageResult]:
     """Score every email file in the given folder.
     Return (file name, verdict, score) tuples.
     """
-    scores = {}
     verdicts = []
     files = os.listdir(folder)
     for fn in files:
@@ -18,30 +37,29 @@ def check_mail(folder):
             continue
         with open(os.path.join(folder, fn), encoding="utf-8", errors="ignore") as f:
             raw = f.read()
-        s = score_email(raw)
-        scores[fn] = s
-        verdicts.append((fn, compute_verdict(s), s))
+        parsed_email = parse_eml(raw, fn)
+        result = triage(parsed_email)
+        verdicts.append(result)
     return verdicts
 
 
-def report(verdicts):
-    """Prints the verdicts and save them to the results file."""
-    print("checked", len(verdicts), "mails")
+def report(verdicts: list[TriageResult]) -> None:
+    """Prints the verdicts."""
     for v in verdicts:
-        print(" ", v[0], "->", v[1], "(score", str(v[2]) + ")")
-    with open("../../results.txt", "w") as out:
-        out.write(str(verdicts))
-    print("flagged:", [v[0] for v in verdicts if v[1] == "PHISHING"])
+        print(f"{v.email_id:<28} {v.verdict} score={v.score}")
 
 
 def main(argv: list[str] | None = None):
     """Run the triage on the given folder"""
-    args = sys.argv[1:] if argv is None else argv
-    if len(args) != 1:
-        print("you must pass a folder path as argument", file=sys.stderr)
-        sys.exit(2)
+    parser = build_parser()
+    args= parser.parse_args(argv)
     try:
-        verdicts = check_mail(sys.argv[1])
+        verdicts = check_mail(args.folder)
+
+        if args.json:
+            with open("output.json", "w") as f:
+                json.dump([asdict(v) for v in verdicts],f)
         report(verdicts)
+
     except FileNotFoundError:
         print("error: no such folder", file=sys.stderr)

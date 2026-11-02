@@ -24,6 +24,7 @@ def keyword_score(raw):
     return sum(W_KEYWORD for kw in KEYWORDS if kw in low)
 
 
+
 def link_score(raw):
     """Assign points for links to IP addresses or punycode domain."""
     # links that look bad
